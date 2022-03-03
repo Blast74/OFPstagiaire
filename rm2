@@ -1,0 +1,111 @@
+#!/bin/bash
+
+help="
+            Synopsis : rm2 [OPTIONS] FILENAME 
+            
+            -v 
+                vider la corbeille
+            -i 
+                mode interactif/ confirmation avant suppression
+            -r 
+                utilisation similaire à rm
+            -h 
+                Afficher l'aide
+"
+
+
+#Définition de fonctions
+
+function testFileExist (){
+  if ! [ -e "${1}" ]; then
+      echo "le fichier n 'existe pas ou le chemin n'est pas le bon "
+      exit
+  fi
+}
+
+function RenameToTrash (){
+    if [ -e "$2/${1}" ]; then
+        mv "$2/$1" "$2/$1-$(date +%m-%d-%y-%T:%N)"
+    fi
+}
+
+function RenameToTrashBak (){
+    if [ -e "$2/${1}" ]; then
+        mv "$2/$1" "$2/$1.bak"
+    fi
+}
+
+function testYesNo () {
+    local reset=0
+    while [ ${reset} = 0 ]; do
+    read -p "$1 [o/n]" reponse 
+    if [[ "${reponse}" == "o" ]] || [[ "${reponse}" == "O" ]]; then
+        echo "0"
+        reset=1
+    elif [[ "${reponse}" == "n" ]] || [[ "${reponse}" == "N" ]]; then 
+            echo "1"
+            reset=1
+    else
+        reset=0
+    fi   
+   done
+
+}
+
+#Execution du script
+#Déclarations de variable 
+
+pathRecycleBin="$HOME/Trash"
+lastField=$(echo $2 | rev | cut -d"/" -f 1 | rev)
+fileName=$2
+
+#test d'existance de Trash
+
+if ! [ -d "$pathRecycleBin" ]; then
+    mkdir "$pathRecycleBin"
+fi
+
+#Execution si Options
+
+    while getopts ":virh" option; do
+    case "${option}" in
+        v)
+            rm -r "${pathRecycleBin}"
+            exit
+            ;;
+        i)
+            if [[ $(testYesNo "voulez supprimer ce fichier") == 0 ]]; then 
+                # lastField=$(echo $1 | rev | cut -d"/" -f 1 | rev)
+                # fileName=$1
+                testFileExist $fileName
+                RenameToTrash $lastField $pathRecycleBin
+                mv $fileName $pathRecycleBin/$lastField
+                exit
+            else
+                echo "Opération Annulé"
+                exit
+            fi
+            ;;
+        r)
+            rm -r $1
+            exit
+            ;;
+        h)
+            echo $help
+            exit
+            ;;
+        *)
+            echo 'Option non définie'
+            exit
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+#Execution sans Options
+
+lastField=$(echo $1 | rev | cut -d"/" -f 1 | rev)
+fileName=$1
+testFileExist $fileName
+RenameToTrash $lastField $pathRecycleBin
+mv $fileName $pathRecycleBin/$lastField
